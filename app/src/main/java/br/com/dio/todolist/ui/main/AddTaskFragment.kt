@@ -6,12 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import br.com.dio.todolist.R
 import br.com.dio.todolist.TaskApplication
 import br.com.dio.todolist.databinding.FragmentAddTaskBinding
-import br.com.dio.todolist.data.Task
 import br.com.dio.todolist.extensions.format
 import br.com.dio.todolist.extensions.text
 import br.com.dio.todolist.viewmodel.TaskViewModel
@@ -19,8 +17,6 @@ import br.com.dio.todolist.viewmodel.TaskViewModelFactory
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.timepicker.MaterialTimePicker
 import com.google.android.material.timepicker.TimeFormat
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 import java.util.*
 
 class AddTaskFragment : Fragment() {
@@ -31,21 +27,6 @@ class AddTaskFragment : Fragment() {
         TaskViewModelFactory(
             (activity?.application as TaskApplication).database.taskDao()
         )
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        arguments?.let {
-            taskId = it.getInt(TASK_ID)
-            lifecycleScope.launch {
-                viewModel.get(taskId).collect { task ->
-                    binding.tilTitle.text = task.title
-                    binding.tilDate.text = task.date
-                    binding.tilHour.text = task.hour
-                }
-            }
-        }
     }
 
     override fun onCreateView(
@@ -66,29 +47,33 @@ class AddTaskFragment : Fragment() {
             tilDate.editText?.setOnClickListener { editDate() }
             tilHour.editText?.setOnClickListener { editHour() }
         }
-    }
-
-    fun saveTask() {
-        lifecycleScope.launch {
-            val task = Task(
-                id = taskId,
-                title = binding.tilTitle.text,
-                date = binding.tilDate.text,
-                hour = binding.tilHour.text
-            )
-            if (taskId == 0) {
-                viewModel.create(task)
-            } else {
-                viewModel.update(task)
+        arguments?.getInt(TASK_ID)?.let {
+            viewModel.get(it).observe(this.viewLifecycleOwner) { task ->
+                taskId = task.id
+                binding.tilTitle.text = task.title
+                binding.tilDate.text = task.date
+                binding.tilHour.text = task.hour
             }
         }
-        backToMain()
     }
 
     fun backToMain() {
         findNavController().navigate(
             R.id.action_addTaskFragment_to_mainFragment
         )
+    }
+
+    fun saveTask() {
+        val title = binding.tilTitle.text
+        val date = binding.tilDate.text
+        val hour = binding.tilHour.text
+
+        if (taskId == 0) {
+            viewModel.create(title, date, hour)
+        } else {
+            viewModel.update(taskId, title, date, hour)
+        }
+        backToMain()
     }
 
     private fun editHour() {

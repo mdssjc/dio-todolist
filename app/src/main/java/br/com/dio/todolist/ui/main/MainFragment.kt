@@ -6,16 +6,13 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import br.com.dio.todolist.R
 import br.com.dio.todolist.TaskApplication
-import br.com.dio.todolist.databinding.FragmentMainBinding
 import br.com.dio.todolist.data.Task
+import br.com.dio.todolist.databinding.FragmentMainBinding
 import br.com.dio.todolist.viewmodel.TaskViewModel
 import br.com.dio.todolist.viewmodel.TaskViewModelFactory
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 
 class MainFragment : Fragment() {
 
@@ -47,38 +44,29 @@ class MainFragment : Fragment() {
         adapter.listenerEdit = { editTask(it) }
         adapter.listenerDelete = { deleteTask(it) }
 
-        updateList()
+        viewModel.listAll().observe(this.viewLifecycleOwner) {
+            binding.includeEmpty.visibility = if (it.isEmpty()) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+            adapter.submitList(it)
+        }
     }
 
     fun newTask() {
         findNavController().navigate(R.id.action_mainFragment_to_addTaskFragmentNew)
     }
 
-    private fun editTask(it: Task) {
+    private fun editTask(task: Task) {
         findNavController().navigate(
             MainFragmentDirections.actionMainFragmentToAddTaskFragmentEdit(
-                taskId = it.id
+                taskId = task.id
             )
         )
     }
 
-    private fun deleteTask(it: Task) {
-        lifecycleScope.launch {
-            viewModel.delete(it)
-            updateList()
-        }
-    }
-
-    private fun updateList() {
-        lifecycleScope.launch {
-            viewModel.listAll().collect {
-                binding.includeEmpty.visibility = if (it.isEmpty()) {
-                    View.VISIBLE
-                } else {
-                    View.GONE
-                }
-                adapter.submitList(it)
-            }
-        }
+    private fun deleteTask(task: Task) {
+        viewModel.delete(task)
     }
 }

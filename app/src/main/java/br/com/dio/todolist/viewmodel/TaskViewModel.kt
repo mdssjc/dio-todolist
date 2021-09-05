@@ -1,17 +1,47 @@
 package br.com.dio.todolist.viewmodel
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.*
 import br.com.dio.todolist.data.Task
 import br.com.dio.todolist.data.TaskDao
+import kotlinx.coroutines.launch
 
 class TaskViewModel(private val taskDao: TaskDao) : ViewModel() {
 
-    fun get(id: Int) = taskDao.findById(id = id)
-    fun listAll() = taskDao.findAll()
-    suspend fun create(task: Task) = taskDao.insert(task = task)
-    suspend fun update(task: Task) = taskDao.update(task = task)
-    suspend fun delete(task: Task) = taskDao.delete(task = task)
+    fun get(id: Int): LiveData<Task> {
+        return taskDao.findById(id).asLiveData()
+    }
+
+    fun listAll(): LiveData<List<Task>> {
+        return taskDao.findAll().asLiveData()
+    }
+
+    fun create(title: String, hour: String, date: String) {
+        if (isValid(title, hour, date)) {
+            val task = Task(0, title, hour, date)
+            viewModelScope.launch {
+                taskDao.insert(task)
+            }
+        }
+    }
+
+    fun update(id: Int, title: String, hour: String, date: String) {
+        if (isValid(title, hour, date)) {
+            val task = Task(id, title, hour, date)
+            viewModelScope.launch {
+                taskDao.update(task)
+            }
+        }
+    }
+
+    fun delete(task: Task) {
+        viewModelScope.launch {
+            taskDao.delete(task)
+        }
+    }
+
+    private fun isValid(title: String, hour: String, date: String): Boolean {
+        return !(title.isBlank() || hour.isBlank() || date.isBlank())
+    }
 }
 
 class TaskViewModelFactory(private val taskDao: TaskDao) :
